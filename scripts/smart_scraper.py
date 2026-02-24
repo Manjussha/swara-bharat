@@ -110,11 +110,11 @@ Generate the queries:"""
         templates = {
             "kannada": {
                 "news": [
-                    "ಕನ್ನಡ ಸುದ್ದಿ tv9",
-                    "kannada news public tv",
-                    "kannada news bulletin today",
-                    "suvarna news kannada",
-                    "udaya news kannada live"
+                    "ಕನ್ನಡ ಸುದ್ದಿ tv9 bulletin",
+                    "kannada news public tv today",
+                    "kannada news bulletin highlights",
+                    "suvarna news kannada summary",
+                    "udaya news kannada today"
                 ],
                 "comedy": [
                     "kannada comedy scenes",
@@ -172,10 +172,21 @@ class YouTubeDownloader:
                 if 'entries' in result:
                     for entry in result['entries']:
                         if entry:
+                            duration = entry.get('duration', 0)
+                            is_live = entry.get('is_live', False)
+
+                            # Skip live streams and check duration
+                            if is_live:
+                                logger.info(f"Skipping live stream: {entry.get('title', 'Unknown')}")
+                                continue
+                            if duration and (duration < 180 or duration > 1800):
+                                logger.info(f"Skipping (duration {duration}s): {entry.get('title', 'Unknown')}")
+                                continue
+
                             videos.append({
                                 'url': f"https://www.youtube.com/watch?v={entry['id']}",
                                 'title': entry.get('title', 'Unknown'),
-                                'duration': entry.get('duration', 0),
+                                'duration': duration,
                                 'channel': entry.get('channel', 'Unknown')
                             })
 
