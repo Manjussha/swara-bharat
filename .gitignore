@@ -1,0 +1,41 @@
+# Python
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Data (too large for git)
+data/raw/
+data/processed/
+data/segments/
+models/*.pth
+models/*.pt
+*.wav
+*.mp3
+*.mp4
+*.m4a
+
+# Environment
+.env
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+
+# OS
+Thumbs.db
