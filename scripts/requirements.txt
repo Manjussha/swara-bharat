@@ -1,0 +1,21 @@
+# Swara-Bharat Smart Scraper Requirements
+
+# YouTube downloading
+yt-dlp>=2024.0.0
+
+# HuggingFace
+huggingface-hub>=0.20.0
+datasets>=2.16.0
+
+# Audio processing (for yt-dlp)
+# Note: ffmpeg must be installed separately on system
+
+# Utilities
+requests>=2.31.0
+python-dotenv>=1.0.0
+tqdm>=4.66.0
+
+# Optional: If running Qwen locally (not recommended for Pi)
+# transformers>=4.36.0
+# torch>=2.0.0
+# accelerate>=0.25.0

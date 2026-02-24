@@ -1,0 +1,26 @@
+{
+  "qwen_model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "language": "kannada",
+  "categories": [
+    "news",
+    "comedy",
+    "educational",
+    "motivational"
+  ],
+  "downloads_per_category": 3,
+  "audio_format": "mp3",
+  "audio_quality": "320",
+  "output_dir": "./data/raw",
+  "hf_dataset_name": "manjussha/swara-bharat-kannada-raw",
+  "log_file": "./logs/scraper.log",
+  "search_filters": {
+    "min_duration": 180,
+    "max_duration": 900,
+    "upload_date": "year"
+  },
+  "automation": {
+    "enabled": true,
+    "schedule": "daily",
+    "time": "02:00"
+  }
+}
