@@ -10,6 +10,13 @@ import logging
 from datetime import datetime
 from pathlib import Path
 import time
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+env_path = Path(__file__).parent / '.env'
+if env_path.exists():
+    load_dotenv(env_path)
+    logging.info(f"Loaded .env from {env_path}")
 
 # Configuration
 CONFIG = {
