@@ -315,6 +315,38 @@ def main():
     uploader = HuggingFaceUploader(CONFIG["hf_dataset_name"])
 
     all_downloads = []
+    batch_size = 10  # Upload every 10 files
+    total_uploaded = 0
+
+    def upload_batch(downloads):
+        """Upload a batch of downloads to HuggingFace"""
+        if not downloads:
+            return True
+
+        logger.info(f"\n☁️  Uploading batch of {len(downloads)} files to HuggingFace...")
+        file_paths = [d['filename'] for d in downloads if d.get('filename')]
+        metadata = {
+            'downloads': downloads,
+            'config': CONFIG,
+            'timestamp': datetime.now().isoformat()
+        }
+
+        success = uploader.upload_files(file_paths, metadata)
+
+        if success:
+            logger.info(f"✅ Batch upload successful! ({len(downloads)} files)")
+            # Delete local files after successful upload
+            for file_path in file_paths:
+                try:
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+                        logger.info(f"🗑️  Deleted local: {os.path.basename(file_path)}")
+                except Exception as e:
+                    logger.warning(f"Could not delete {file_path}: {e}")
+        else:
+            logger.error("❌ Batch upload failed - keeping local files")
+
+        return success
 
     # Process each category
     for category in CONFIG["categories"]:
@@ -331,7 +363,7 @@ def main():
         logger.info(f"📝 Generated {len(queries)} queries: {queries}")
 
         # Search and download for each query
-        for query in queries[:2]:  # Limit to 2 queries per category for testing
+        for query in queries[:2]:  # Limit to 2 queries per category
             logger.info(f"\n🔍 Searching: {query}")
 
             # Search YouTube
@@ -348,33 +380,27 @@ def main():
                     download_info['search_query'] = query
                     all_downloads.append(download_info)
 
+                    # Upload every 10 files
+                    if len(all_downloads) >= batch_size:
+                        if upload_batch(all_downloads):
+                            total_uploaded += len(all_downloads)
+                            all_downloads = []  # Clear batch after successful upload
+
                 # Be nice to YouTube - small delay
                 time.sleep(2)
 
-    # Upload to HuggingFace
+    # Upload remaining files (if any)
     if all_downloads:
-        logger.info(f"\n☁️  Uploading {len(all_downloads)} files to HuggingFace...")
-
-        file_paths = [d['filename'] for d in all_downloads if d.get('filename')]
-        metadata = {
-            'downloads': all_downloads,
-            'config': CONFIG,
-            'timestamp': datetime.now().isoformat()
-        }
-
-        success = uploader.upload_files(file_paths, metadata)
-
-        if success:
-            logger.info("✅ Upload successful!")
-        else:
-            logger.error("❌ Upload failed")
+        if upload_batch(all_downloads):
+            total_uploaded += len(all_downloads)
 
     # Summary
     logger.info("\n" + "=" * 60)
     logger.info(f"✅ Scraping completed!")
-    logger.info(f"📊 Total downloads: {len(all_downloads)}")
-    logger.info(f"💾 Stored in: {CONFIG['output_dir']}")
+    logger.info(f"📊 Total downloads: {total_uploaded}")
+    logger.info(f"💾 Local files: Auto-deleted after upload")
     logger.info(f"☁️  HuggingFace: {CONFIG['hf_dataset_name']}")
+    logger.info(f"🎉 All {total_uploaded} files safely in cloud!")
     logger.info("=" * 60)
 
 
