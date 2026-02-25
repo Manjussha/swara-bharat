@@ -277,42 +277,74 @@ class HuggingFaceUploader:
         self.dataset_name = dataset_name
         self.hf_token = os.getenv("HF_TOKEN")
 
-    def upload_files(self, file_paths, metadata):
-        """Upload files to HuggingFace dataset"""
+    def _get_api(self):
+        """Get HuggingFace API client and ensure repo exists"""
+        from huggingface_hub import HfApi, create_repo
+        api = HfApi(token=self.hf_token)
         try:
-            from huggingface_hub import HfApi, create_repo
+            create_repo(
+                self.dataset_name,
+                repo_type="dataset",
+                private=False,
+                exist_ok=True,
+                token=self.hf_token
+            )
+        except:
+            pass
+        return api
 
-            api = HfApi(token=self.hf_token)
+    def upload_single(self, file_path, download_info):
+        """Upload a single confirmed file to HuggingFace, then delete it locally"""
+        if not os.path.exists(file_path):
+            logger.error(f"File not found: {file_path}")
+            return False
 
-            # Create repo if doesn't exist
+        file_size = os.path.getsize(file_path)
+        if file_size == 0:
+            logger.error(f"File is empty (0 bytes), skipping: {file_path}")
+            return False
+
+        try:
+            api = self._get_api()
+
+            # Upload audio file into category subfolder on HF
+            category = download_info.get('category', 'misc')
+            repo_path = f"audio/{category}/{os.path.basename(file_path)}"
+
+            logger.info(f"☁️  Uploading: {os.path.basename(file_path)} ({file_size / 1024**2:.1f} MB)")
+            api.upload_file(
+                path_or_fileobj=file_path,
+                path_in_repo=repo_path,
+                repo_id=self.dataset_name,
+                repo_type="dataset",
+                token=self.hf_token
+            )
+            logger.info(f"✅ Uploaded to HF: {repo_path}")
+
+            # Delete local file after confirmed upload
             try:
-                create_repo(
-                    self.dataset_name,
-                    repo_type="dataset",
-                    private=False,
-                    exist_ok=True,
-                    token=self.hf_token
-                )
-            except:
-                pass  # Repo might already exist
+                os.remove(file_path)
+                logger.info(f"🗑️  Deleted local: {os.path.basename(file_path)}")
+            except Exception as e:
+                logger.warning(f"Could not delete local file: {e}")
 
-            # Upload files
-            for file_path in file_paths:
-                if os.path.exists(file_path):
-                    api.upload_file(
-                        path_or_fileobj=file_path,
-                        path_in_repo=os.path.basename(file_path),
-                        repo_id=self.dataset_name,
-                        repo_type="dataset",
-                        token=self.hf_token
-                    )
-                    logger.info(f"Uploaded to HF: {os.path.basename(file_path)}")
+            return True
+        except Exception as e:
+            logger.error(f"HuggingFace upload error: {e}")
+            return False
 
-            # Upload metadata
-            metadata_path = "metadata.json"
+    def update_metadata(self, all_downloads):
+        """Update metadata.json on HuggingFace with all download records"""
+        try:
+            api = self._get_api()
+            metadata_path = "/tmp/metadata.json"
             with open(metadata_path, 'w') as f:
-                json.dump(metadata, f, indent=2)
-
+                json.dump({
+                    'downloads': all_downloads,
+                    'config': CONFIG,
+                    'timestamp': datetime.now().isoformat(),
+                    'total': len(all_downloads)
+                }, f, indent=2)
             api.upload_file(
                 path_or_fileobj=metadata_path,
                 path_in_repo="metadata.json",
@@ -320,11 +352,9 @@ class HuggingFaceUploader:
                 repo_type="dataset",
                 token=self.hf_token
             )
-
-            return True
+            logger.info(f"📋 Metadata updated ({len(all_downloads)} total records)")
         except Exception as e:
-            logger.error(f"HuggingFace upload error: {e}")
-            return False
+            logger.warning(f"Metadata update error: {e}")
 
 
 def main():
@@ -342,39 +372,9 @@ def main():
     )
     uploader = HuggingFaceUploader(CONFIG["hf_dataset_name"])
 
-    all_downloads = []
-    batch_size = 10  # Upload every 10 files
+    all_records = []   # Full history for metadata
     total_uploaded = 0
-
-    def upload_batch(downloads):
-        """Upload a batch of downloads to HuggingFace"""
-        if not downloads:
-            return True
-
-        logger.info(f"\n☁️  Uploading batch of {len(downloads)} files to HuggingFace...")
-        file_paths = [d['filename'] for d in downloads if d.get('filename')]
-        metadata = {
-            'downloads': downloads,
-            'config': CONFIG,
-            'timestamp': datetime.now().isoformat()
-        }
-
-        success = uploader.upload_files(file_paths, metadata)
-
-        if success:
-            logger.info(f"✅ Batch upload successful! ({len(downloads)} files)")
-            # Delete local files after successful upload
-            for file_path in file_paths:
-                try:
-                    if os.path.exists(file_path):
-                        os.remove(file_path)
-                        logger.info(f"🗑️  Deleted local: {os.path.basename(file_path)}")
-                except Exception as e:
-                    logger.warning(f"Could not delete {file_path}: {e}")
-        else:
-            logger.error("❌ Batch upload failed - keeping local files")
-
-        return success
+    total_failed = 0
 
     # Process each category
     for category in CONFIG["categories"]:
@@ -387,46 +387,56 @@ def main():
             category,
             num_queries=3
         )
-
         logger.info(f"📝 Generated {len(queries)} queries: {queries}")
+
+        category_count = 0
 
         # Search and download for each query
         for query in queries[:2]:  # Limit to 2 queries per category
             logger.info(f"\n🔍 Searching: {query}")
 
-            # Search YouTube
-            videos = downloader.search_youtube(query, max_results=2)
-            logger.info(f"Found {len(videos)} videos")
+            videos = downloader.search_youtube(query, max_results=5)
+            logger.info(f"Found {len(videos)} valid videos")
 
-            # Download videos
-            for video in videos[:CONFIG["downloads_per_category"]]:
+            for video in videos:
+                if category_count >= CONFIG["downloads_per_category"]:
+                    break
+
                 logger.info(f"⬇️  Downloading: {video['title'][:50]}...")
 
                 download_info = downloader.download_audio(video['url'], category)
-                if download_info:
+
+                if download_info and download_info.get('filename'):
                     download_info['category'] = category
                     download_info['search_query'] = query
-                    all_downloads.append(download_info)
 
-                    # Upload every 10 files
-                    if len(all_downloads) >= batch_size:
-                        if upload_batch(all_downloads):
-                            total_uploaded += len(all_downloads)
-                            all_downloads = []  # Clear batch after successful upload
+                    # Immediately upload once download is confirmed complete
+                    success = uploader.upload_single(download_info['filename'], download_info)
 
-                # Be nice to YouTube - small delay
+                    if success:
+                        total_uploaded += 1
+                        category_count += 1
+                        all_records.append(download_info)
+                        logger.info(f"[{total_uploaded} uploaded] {category}: {category_count}/{CONFIG['downloads_per_category']}")
+                    else:
+                        total_failed += 1
+                        logger.warning(f"❌ Upload failed, file kept locally for retry")
+                else:
+                    logger.warning(f"Download failed or file missing, skipping")
+
+                # Be nice to YouTube
                 time.sleep(2)
 
-    # Upload remaining files (if any)
-    if all_downloads:
-        if upload_batch(all_downloads):
-            total_uploaded += len(all_downloads)
+    # Update final metadata on HuggingFace
+    if all_records:
+        uploader.update_metadata(all_records)
 
     # Summary
     logger.info("\n" + "=" * 60)
     logger.info(f"✅ Scraping completed!")
-    logger.info(f"📊 Total downloads: {total_uploaded}")
-    logger.info(f"💾 Local files: Auto-deleted after upload")
+    logger.info(f"📊 Uploaded: {total_uploaded} files")
+    logger.info(f"❌ Failed:   {total_failed} files")
+    logger.info(f"💾 Local files: Auto-deleted after each upload")
     logger.info(f"☁️  HuggingFace: {CONFIG['hf_dataset_name']}")
     logger.info(f"🎉 All {total_uploaded} files safely in cloud!")
     logger.info("=" * 60)
