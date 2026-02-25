@@ -396,14 +396,16 @@ def main():
     total_uploaded = 0
     total_failed = 0
 
-    # Load already-uploaded URLs from previous runs so we never re-download them
+    # Load already-uploaded URLs and titles from previous runs to skip duplicates
     upload_log_path = Path("./logs/upload_log.json")
     seen_urls = set()
+    seen_titles = set()
     if upload_log_path.exists():
         try:
             prev = json.loads(upload_log_path.read_text())
             seen_urls = {r['url'] for r in prev if r.get('url')}
-            logger.info(f"📋 Loaded {len(seen_urls)} already-uploaded URLs — will skip these")
+            seen_titles = {r['title'].strip().lower() for r in prev if r.get('title')}
+            logger.info(f"📋 Loaded {len(prev)} prior uploads — skipping already-seen titles/URLs")
         except Exception as e:
             logger.warning(f"Could not load upload_log.json: {e}")
 
@@ -433,11 +435,12 @@ def main():
                 if category_count >= CONFIG["downloads_per_category"]:
                     break
 
-                # Skip already processed URLs (same video appearing in different queries/categories)
-                if video['url'] in seen_urls:
-                    logger.info(f"⏭️  Skipping duplicate: {video['title'][:50]}")
+                # Skip already processed videos (by URL or title) across runs and categories
+                if video['url'] in seen_urls or video['title'].strip().lower() in seen_titles:
+                    logger.info(f"⏭️  Skipping already uploaded: {video['title'][:50]}")
                     continue
                 seen_urls.add(video['url'])
+                seen_titles.add(video['title'].strip().lower())
 
                 logger.info(f"⬇️  Downloading: {video['title'][:50]}...")
 
