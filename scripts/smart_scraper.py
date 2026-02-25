@@ -329,6 +329,7 @@ class HuggingFaceUploader:
                 'title': download_info.get('title', ''),
                 'channel': download_info.get('channel', ''),
                 'duration': download_info.get('duration', 0),
+                'url': download_info.get('url', ''),
                 'hf_path': repo_path,
                 'uploaded_at': datetime.now().isoformat()
             }
@@ -394,7 +395,17 @@ def main():
     all_records = []   # Full history for metadata
     total_uploaded = 0
     total_failed = 0
-    seen_urls = set()  # Track processed URLs across all categories to skip duplicates
+
+    # Load already-uploaded URLs from previous runs so we never re-download them
+    upload_log_path = Path("./logs/upload_log.json")
+    seen_urls = set()
+    if upload_log_path.exists():
+        try:
+            prev = json.loads(upload_log_path.read_text())
+            seen_urls = {r['url'] for r in prev if r.get('url')}
+            logger.info(f"📋 Loaded {len(seen_urls)} already-uploaded URLs — will skip these")
+        except Exception as e:
+            logger.warning(f"Could not load upload_log.json: {e}")
 
     # Process each category
     for category in CONFIG["categories"]:
