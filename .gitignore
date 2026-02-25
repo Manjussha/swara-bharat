@@ -39,3 +39,9 @@ logs/
 
 # OS
 Thumbs.db
+
+# Claude AI settings
+.claude/
+
+# Misc
+nul
