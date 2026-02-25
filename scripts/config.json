@@ -5,17 +5,21 @@
     "news",
     "comedy",
     "educational",
-    "motivational"
+    "motivational",
+    "interviews",
+    "discussion",
+    "podcasts",
+    "documentary"
   ],
-  "downloads_per_category": 3,
+  "downloads_per_category": 20,
   "audio_format": "mp3",
-  "audio_quality": "320",
+  "audio_quality": "192",
   "output_dir": "./data/raw",
   "hf_dataset_name": "manjussha/swara-bharat-kannada-raw",
   "log_file": "./logs/scraper.log",
   "search_filters": {
     "min_duration": 180,
-    "max_duration": 900,
+    "max_duration": 1800,
     "upload_date": "year"
   },
   "automation": {

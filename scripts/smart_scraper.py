@@ -143,6 +143,34 @@ Generate the queries:"""
                     "kannada life advice",
                     "kannada success stories",
                     "kannada personality development"
+                ],
+                "interviews": [
+                    "kannada celebrity interview",
+                    "kannada actor interview",
+                    "kannada politician interview",
+                    "kannada exclusive interview",
+                    "kannada interview talk show"
+                ],
+                "discussion": [
+                    "kannada panel discussion",
+                    "kannada debate program",
+                    "kannada talk show",
+                    "kannada roundtable discussion",
+                    "kannada opinion show"
+                ],
+                "podcasts": [
+                    "kannada podcast",
+                    "kannada audio talk",
+                    "kannada storytelling",
+                    "kannada conversation show",
+                    "kannada radio program"
+                ],
+                "documentary": [
+                    "kannada documentary",
+                    "kannada history documentary",
+                    "kannada nature documentary",
+                    "kannada culture documentary",
+                    "kannada science documentary"
                 ]
             }
         }
