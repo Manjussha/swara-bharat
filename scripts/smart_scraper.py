@@ -394,6 +394,7 @@ def main():
     all_records = []   # Full history for metadata
     total_uploaded = 0
     total_failed = 0
+    seen_urls = set()  # Track processed URLs across all categories to skip duplicates
 
     # Process each category
     for category in CONFIG["categories"]:
@@ -420,6 +421,12 @@ def main():
             for video in videos:
                 if category_count >= CONFIG["downloads_per_category"]:
                     break
+
+                # Skip already processed URLs (same video appearing in different queries/categories)
+                if video['url'] in seen_urls:
+                    logger.info(f"⏭️  Skipping duplicate: {video['title'][:50]}")
+                    continue
+                seen_urls.add(video['url'])
 
                 logger.info(f"⬇️  Downloading: {video['title'][:50]}...")
 
