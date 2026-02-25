@@ -217,11 +217,11 @@
         </header>
 
         <div class="grid">
-            <!-- Download Stats -->
+            <!-- Upload Stats -->
             <div class="card">
-                <h2>📥 Download Statistics</h2>
+                <h2>☁️ HuggingFace Uploads</h2>
                 <div class="big-number" id="total-files">0</div>
-                <div style="text-align: center; color: #666; margin-bottom: 20px;">Total Files Downloaded</div>
+                <div style="text-align: center; color: #666; margin-bottom: 20px;">Total Files Uploaded to HuggingFace</div>
                 <div class="stat-item">
                     <span class="stat-label">Total Size</span>
                     <span class="stat-value" id="total-size">0 MB</span>
@@ -284,17 +284,17 @@
 
         <!-- Categories Breakdown -->
         <div class="card">
-            <h2>📊 Downloads by Category</h2>
+            <h2>📊 Uploads by Category</h2>
             <div class="category-list" id="categories-list">
                 <p style="text-align: center; color: #666;">Loading categories...</p>
             </div>
         </div>
 
-        <!-- Recent Downloads -->
+        <!-- Recent Uploads -->
         <div class="card">
-            <h2>🎵 Recent Downloads</h2>
-            <div class="recent-downloads" id="recent-downloads">
-                <p style="text-align: center; color: #666;">Loading recent downloads...</p>
+            <h2>🎵 Recent Uploads</h2>
+            <div class="recent-downloads" id="recent-uploads">
+                <p style="text-align: center; color: #666;">Loading recent uploads...</p>
             </div>
         </div>
 
@@ -326,13 +326,13 @@
                     statusBadge.className = 'status-badge ' +
                         (data.process.running ? 'status-running' : 'status-idle');
 
-                    // Download stats
+                    // Upload stats
                     document.getElementById('total-files').textContent =
-                        data.downloads.total_files.toLocaleString();
+                        data.uploads.total_files.toLocaleString();
                     document.getElementById('total-size').textContent =
-                        data.downloads.total_size_mb.toFixed(2) + ' MB';
+                        data.uploads.total_size_mb.toFixed(2) + ' MB';
                     document.getElementById('total-categories').textContent =
-                        Object.keys(data.downloads.by_category).length;
+                        Object.keys(data.uploads.by_category).length;
 
                     // System stats
                     document.getElementById('cpu-usage').textContent =
@@ -370,8 +370,8 @@
 
                     // Categories
                     const categoriesList = document.getElementById('categories-list');
-                    if (Object.keys(data.downloads.by_category).length > 0) {
-                        categoriesList.innerHTML = Object.entries(data.downloads.by_category)
+                    if (Object.keys(data.uploads.by_category).length > 0) {
+                        categoriesList.innerHTML = Object.entries(data.uploads.by_category)
                             .map(([name, info]) => `
                                 <div class="category-item">
                                     <div class="category-name">${name}</div>
@@ -383,10 +383,10 @@
                             `).join('');
                     }
 
-                    // Recent downloads
-                    const recentDownloads = document.getElementById('recent-downloads');
-                    if (data.downloads.recent_downloads.length > 0) {
-                        recentDownloads.innerHTML = data.downloads.recent_downloads
+                    // Recent uploads
+                    const recentUploads = document.getElementById('recent-uploads');
+                    if (data.uploads.recent_uploads.length > 0) {
+                        recentUploads.innerHTML = data.uploads.recent_uploads
                             .map(file => `
                                 <div class="download-item">
                                     <div class="download-name">${file.name}</div>

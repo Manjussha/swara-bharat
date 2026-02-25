@@ -321,6 +321,25 @@ class HuggingFaceUploader:
             )
             logger.info(f"✅ Uploaded to HF: {repo_path}")
 
+            # Log upload to local upload_log.json for dashboard
+            upload_record = {
+                'filename': os.path.basename(file_path),
+                'category': category,
+                'size_mb': round(file_size / 1024**2, 2),
+                'title': download_info.get('title', ''),
+                'channel': download_info.get('channel', ''),
+                'duration': download_info.get('duration', 0),
+                'hf_path': repo_path,
+                'uploaded_at': datetime.now().isoformat()
+            }
+            upload_log_path = Path("./logs/upload_log.json")
+            try:
+                existing = json.loads(upload_log_path.read_text()) if upload_log_path.exists() else []
+                existing.append(upload_record)
+                upload_log_path.write_text(json.dumps(existing, indent=2))
+            except Exception as e:
+                logger.warning(f"Could not update upload_log.json: {e}")
+
             # Delete local file after confirmed upload
             try:
                 os.remove(file_path)

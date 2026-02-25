@@ -36,45 +36,51 @@ def get_system_stats():
         'cpu_percent': psutil.cpu_percent(interval=1)
     }
 
-def get_download_stats():
-    """Get download statistics"""
+def get_upload_stats():
+    """Get upload statistics from upload_log.json"""
     stats = {
         'total_files': 0,
         'total_size_mb': 0,
         'by_category': {},
-        'recent_downloads': []
+        'recent_uploads': []
     }
 
-    if not DATA_DIR.exists():
+    upload_log = LOGS_DIR / "upload_log.json"
+    if not upload_log.exists():
         return stats
 
-    # Count files by category
-    for category_dir in DATA_DIR.iterdir():
-        if category_dir.is_dir():
-            files = list(category_dir.glob('*.mp3'))
-            count = len(files)
-            size = sum(f.stat().st_size for f in files) / (1024**2)  # MB
+    try:
+        records = json.loads(upload_log.read_text())
+    except:
+        return stats
 
-            stats['by_category'][category_dir.name] = {
-                'count': count,
-                'size_mb': round(size, 2)
-            }
-            stats['total_files'] += count
-            stats['total_size_mb'] += size
+    for r in records:
+        category = r.get('category', 'misc')
+        size_mb = r.get('size_mb', 0)
 
-            # Get recent files from this category
-            for f in sorted(files, key=lambda x: x.stat().st_mtime, reverse=True)[:5]:
-                stats['recent_downloads'].append({
-                    'name': f.name,
-                    'category': category_dir.name,
-                    'size_mb': round(f.stat().st_size / (1024**2), 2),
-                    'time': datetime.fromtimestamp(f.stat().st_mtime).strftime('%Y-%m-%d %H:%M:%S')
-                })
+        if category not in stats['by_category']:
+            stats['by_category'][category] = {'count': 0, 'size_mb': 0}
+        stats['by_category'][category]['count'] += 1
+        stats['by_category'][category]['size_mb'] = round(
+            stats['by_category'][category]['size_mb'] + size_mb, 2
+        )
+        stats['total_files'] += 1
+        stats['total_size_mb'] += size_mb
 
     stats['total_size_mb'] = round(stats['total_size_mb'], 2)
-    stats['recent_downloads'] = sorted(stats['recent_downloads'],
-                                      key=lambda x: x['time'],
-                                      reverse=True)[:10]
+
+    # Most recent 10 uploads
+    stats['recent_uploads'] = [
+        {
+            'name': r.get('filename', ''),
+            'category': r.get('category', ''),
+            'size_mb': r.get('size_mb', 0),
+            'time': r.get('uploaded_at', '')[:19].replace('T', ' '),
+            'channel': r.get('channel', ''),
+            'duration': r.get('duration', 0)
+        }
+        for r in reversed(records[-10:])
+    ]
 
     return stats
 
@@ -120,7 +126,7 @@ def api_stats():
     """API endpoint for all statistics"""
     return jsonify({
         'system': get_system_stats(),
-        'downloads': get_download_stats(),
+        'uploads': get_upload_stats(),
         'process': {
             'running': get_process_status(),
             'status': 'Running' if get_process_status() else 'Idle'
